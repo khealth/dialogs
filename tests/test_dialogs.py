@@ -5,9 +5,9 @@ import gevent
 from gevent import time
 from typing import Tuple
 
-from dialogs.dialogs.dialogs import run_dialog, run
-from dialogs.dialogs.types import dialog, send_message, get_client_response, DialogStepDone 
-from dialogs.dialogs.persistence.in_memory import InMemoryPersistence, PersistenceProvider
+from dialogs_framework.dialogs import run_dialog, run
+from dialogs_framework.types import dialog, send_message, get_client_response, DialogStepDone
+from dialogs_framework.persistence.in_memory import InMemoryPersistence, PersistenceProvider
 
 
 @dialog(version="1.0")
@@ -158,7 +158,7 @@ def test_run_dialog_with_fallback_with_client_response():
         name_getter_dialog_take_2(), persistence, "Juanito", fallback_with_client_response()
     )
     assert step2.messages == ["Falling back!"]
-    # We don't test for the return value of this part because we don't handle the internal fallback dialogs return_value
+    # We don't test for the return value of this part because we don't handle the internal fallback dialogs_framework return_value
 
     step3 = run_dialog(
         name_getter_dialog_take_2(), persistence, "Julia", fallback_with_client_response()

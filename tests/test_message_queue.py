@@ -1,4 +1,4 @@
-from ..dialogs.message_queue import MessageQueue
+from dialogs_framework.message_queue import MessageQueue
 
 
 def test_happy_flow():

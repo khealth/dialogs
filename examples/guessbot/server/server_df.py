@@ -1,9 +1,7 @@
 from random import randrange
 from fastapi import FastAPI
-from dataclasses import dataclass
-from typing import Optional
 from collections import defaultdict
-from dialogs import (
+from dialogs_framework import (
     dialog,
     InMemoryPersistence,
     run,

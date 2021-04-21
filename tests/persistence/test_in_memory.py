@@ -1,6 +1,6 @@
-from ...dialogs.types import dialog
-from ...dialogs.persistence.in_memory import InMemoryPersistence
-from ...dialogs.dialog_state import new_empty_state, DialogState
+from dialogs_framework.types import dialog
+from dialogs_framework.persistence.in_memory import InMemoryPersistence
+from dialogs_framework.dialog_state import new_empty_state, DialogState
 
 
 @dialog(version="1.0")

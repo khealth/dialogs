@@ -36,7 +36,7 @@ class SendToClientException(Exception):
 
 class VersionMismatchException(Exception):
     """
-    Raised when dialogs have mismatching versions.
+    Raised when dialogs_framework have mismatching versions.
     This exception is used to break out of the currently running dialog
     and handle the mismatch on the parent run_dialog.
     """

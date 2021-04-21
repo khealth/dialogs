@@ -1,7 +1,7 @@
 from typing import List, TypeVar, Generic, Optional
 from dataclasses import dataclass, field
 
-from ..dialogs.types import BaseDialog
+from .types import BaseDialog
 
 
 class DialogStateException(Exception):

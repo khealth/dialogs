@@ -1,6 +1,6 @@
 from typing import List, Any, cast
 
-from dialogs import BaseDialog, send_message, get_client_response, dialog, run
+from dialogs_framework import BaseDialog, send_message, get_client_response, dialog, run
 
 
 @dialog(version="1.0")

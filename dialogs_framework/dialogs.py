@@ -43,8 +43,8 @@ dialog_context: ContextManager = ContextManager()
 
 
 """
-This context is used to prevent having to pass arguments when calling dialogs.
-Its purpose is to make the syntax of defining dialogs nicer.
+This context is used to prevent having to pass arguments when calling dialogs_framework.
+Its purpose is to make the syntax of defining dialogs_framework nicer.
 
 It contains the context required by run() to call a subdialog.
 """
@@ -124,7 +124,7 @@ def run(subdialog: BaseDialog[T]) -> T:
 
            * send_message adds a message to the outgoing message queue.
 
-       Normal dialogs accept the _run function itself, which allows them to call their
+       Normal dialogs_framework accept the _run function itself, which allows them to call their
        own subdialogs. Their _run is injected with their appropriate state.
 
     3. If there are no more messages to send, set the return value in the DialogState
