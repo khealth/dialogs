@@ -3,7 +3,7 @@ line-length = 100
 
 [tool.poetry]
 name = "dialogs_framework"
-version = "0.1.4"
+version = "0.1.5"
 description = ""
 authors = ["Alon <alon.gal@khealth.com>"]
 
