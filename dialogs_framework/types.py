@@ -83,3 +83,7 @@ class DialogStepDone(Generic[T, ServerMessage]):
 class DialogStepNotDone(Generic[ServerMessage]):
     messages: List[ServerMessage]
     is_done: Literal[False] = False
+
+
+class DialogStateException(Exception):
+    pass

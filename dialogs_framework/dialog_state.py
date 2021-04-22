@@ -1,11 +1,7 @@
 from typing import List, TypeVar, Generic, Optional
 from dataclasses import dataclass, field
 
-from .types import BaseDialog
-
-
-class DialogStateException(Exception):
-    pass
+from .types import BaseDialog, DialogStateException
 
 
 T = TypeVar("T")
