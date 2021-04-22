@@ -3,13 +3,13 @@ line-length = 100
 
 [tool.poetry]
 name = "dialogs_framework"
-version = "0.1.2"
+version = "0.1.5"
 description = ""
 authors = ["Alon <alon.gal@khealth.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.6"
-gevent = "^21.1.2"
+gevent = "*"
 
 [tool.poetry.dev-dependencies]
 fastapi = "^0.63.0"
