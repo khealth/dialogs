@@ -80,7 +80,7 @@ def topic_dialog() -> Tuple[str, str]:
 def run_echo_dialog_task(message: str):
     persistence: PersistenceProvider = InMemoryPersistence()
     test_dialog = echo_dialog(message)
-    next_step = run_dialog(test_dialog, persistence, "test") # type: ignore
+    next_step = run_dialog(test_dialog, persistence, "test")  # type: ignore
 
     assert len(next_step.messages) == 1
 

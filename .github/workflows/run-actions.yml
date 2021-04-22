@@ -23,5 +23,5 @@ jobs:
         poetry run mypy --ignore-missing-imports dialogs_framework tests
     - name: black
       run: |
-        poetry run black .
+        poetry run black --check .
 
