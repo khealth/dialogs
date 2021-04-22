@@ -12,7 +12,16 @@ jobs:
     - name: Install dependencies
       run: |
         poetry install
-    - name: Pytest
+    - name: pytest
       run: |
         poetry run pytest tests
+    - name: pylint
+      run: |
+        poetry run pylint -E dialogs_framework tests
+    - name: mypy
+      run: |
+        poetry run mypy --ignore-missing-imports dialogs_framework tests
+    - name: black
+      run: |
+        poetry run black .
 
