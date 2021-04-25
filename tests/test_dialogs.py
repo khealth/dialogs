@@ -1,8 +1,6 @@
 from concurrent.futures.thread import ThreadPoolExecutor
 from time import sleep
 
-import gevent
-from gevent import time
 from typing import Tuple
 
 from dialogs_framework.dialogs import run_dialog, run
@@ -89,8 +87,6 @@ def run_echo_dialog_task(message: str):
 
 @dialog(version="test")
 def echo_dialog(message: str):
-    # Release greenlet
-    time.sleep(0)
     # Release thread
     sleep(0.0001)
     run(send_message(message))
@@ -211,15 +207,5 @@ def test_running_dialogs_concurrently_handles_messages_apart():
 
     jobs = [executor.submit(run_echo_dialog_task, message) for message in messages]
     results = [job.result() for job in jobs]
-
-    assert results == messages
-
-
-def test_running_two_dialogs_concurrently_with_gevent_doesnt_mix_messages():
-    messages = ["first", "second", "third"]
-
-    jobs = [gevent.spawn(run_echo_dialog_task, message) for message in messages]
-    gevent.joinall(jobs)
-    results = [result.value for result in jobs]
 
     assert results == messages
