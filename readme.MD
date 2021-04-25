@@ -32,4 +32,4 @@ poetry run python -m examples.dragons.chat_example
 
 # Async safety
 
-The framework is **not** asyncio safe, due to the global context used by the functions `run` and `run_dialog`. The context is thread-safe, greenlet-safe, but not asyncio safe.
+The framework uses `contextvars`, for the global context used by the functions `run` and `run_dialog`. It is not tested using gevent / greenlets, and compatibility may depend on the Python version as well.

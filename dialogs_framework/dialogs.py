@@ -1,8 +1,7 @@
 from itertools import count
 from typing import Iterator, TypeVar, List, cast, Union, Generic, Optional
 from dataclasses import dataclass
-
-from gevent.local import local
+from contextvars import ContextVar
 
 from .types import (
     Dialog,
@@ -34,12 +33,7 @@ class DialogContext(Generic[ClientResponse, ServerMessage]):
     call_counter: Iterator[int]
 
 
-# This is thread-safe, greenlet / gevent safe, but NOT asyncio safe
-class ContextManager(local):
-    context: DialogContext
-
-
-dialog_context: ContextManager = ContextManager()
+dialog_context: ContextVar[DialogContext] = ContextVar("dialog_context")
 
 
 """
@@ -71,8 +65,8 @@ def run_dialog(
     if state.handling_fallback and fallback_dialog is not None:
         return _run_fallback_dialog(client_response, dialog, persistence, fallback_dialog, state)
 
-    dialog_context.context = DialogContext(
-        send=send, state=state, call_counter=count(), client_response=client_response
+    dialog_context.set(
+        DialogContext(send=send, state=state, call_counter=count(), client_response=client_response)
     )
 
     is_done = False
@@ -130,7 +124,7 @@ def run(subdialog: BaseDialog[T]) -> T:
     3. If there are no more messages to send, set the return value in the DialogState
        and return it.
     """
-    context: DialogContext = dialog_context.context
+    context: DialogContext = dialog_context.get()
     state = context.state
     client_response = context.client_response
     send = context.send
@@ -157,12 +151,16 @@ def run(subdialog: BaseDialog[T]) -> T:
     elif isinstance(subdialog, Dialog):
         # This token is used to return to the parent context after
         # the subdialog has finished its execution.
-        parent_context = dialog_context.context
-        dialog_context.context = DialogContext(
-            state=subdialog_state, client_response=client_response, send=send, call_counter=count()
+        token = dialog_context.set(
+            DialogContext(
+                state=subdialog_state,
+                client_response=client_response,
+                send=send,
+                call_counter=count(),
+            )
         )
         return_value = subdialog.dialog()  # type: ignore
-        dialog_context.context = parent_context
+        dialog_context.reset(token)
     else:
         raise Exception("Unsupported dialog type")
 
