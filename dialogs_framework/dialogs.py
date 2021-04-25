@@ -33,7 +33,7 @@ class DialogContext(Generic[ClientResponse, ServerMessage]):
     call_counter: Iterator[int]
 
 
-dialog_context: ContextVar[DialogContext] = ContextVar('dialog_context')
+dialog_context: ContextVar[DialogContext] = ContextVar("dialog_context")
 
 
 """
@@ -66,9 +66,7 @@ def run_dialog(
         return _run_fallback_dialog(client_response, dialog, persistence, fallback_dialog, state)
 
     dialog_context.set(
-        DialogContext(
-            send=send, state=state, call_counter=count(), client_response=client_response
-        )
+        DialogContext(send=send, state=state, call_counter=count(), client_response=client_response)
     )
 
     is_done = False
@@ -155,7 +153,10 @@ def run(subdialog: BaseDialog[T]) -> T:
         # the subdialog has finished its execution.
         token = dialog_context.set(
             DialogContext(
-                state=subdialog_state, client_response=client_response, send=send, call_counter=count()
+                state=subdialog_state,
+                client_response=client_response,
+                send=send,
+                call_counter=count(),
             )
         )
         return_value = subdialog.dialog()  # type: ignore
