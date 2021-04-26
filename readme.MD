@@ -1,4 +1,8 @@
-# Dialogs Framework
+
+<p align="center">
+  <img width="300" height="300" src="https://user-images.githubusercontent.com/13794950/116088687-c41fc680-a6aa-11eb-8356-5242773c584e.png">
+</p>
+
 A Python library for resumable stateful functions.
 
 ## Resumable what now?
