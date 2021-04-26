@@ -1,12 +1,21 @@
 # Dialogs Framework
-The Dialogs Framework is a Python library for writing resumable functions with persistent execution state.
+A Python library for resumable stateful functions.
 
 ## Resumable what now?
 This framework is intended for long-lived backend flows, such as chatbot conversations. It allows one to write code as a chronological flow, and provides the magic to make execution resume where it left off.
 
-## Code sample
+Flows can be simple pre-programmed conversations, or complex user interactions with conditionals, loops, external APIs, and natural language processing. The aim of the framework is to reduce the complexity of managing execution state, and keeping track of where in the flow each user is located.
+
+## Example
 ```python
-# No dialog, manual state manipulation
+# With the dialogs framework
+@dialog()
+def ask_a_name_dialog():
+    run(send_message("What is your name?"))
+    name = run(get_client_response())
+    run(send_message(f"{name} is a beautiful name!"))
+
+# No framework, manual state manipulation
 def ask_a_name(client_answer, state):
     if not state.did_ask_already:
         state.did_ask_already = True
@@ -14,18 +23,11 @@ def ask_a_name(client_answer, state):
         return f"{name} is a beautiful name!"
     else:
         return "What is your name?"
-
-# With the dialogs framework
-@dialog()
-def ask_a_name_dialog():
-    run(send_message("What is your name?"))
-    name = run(get_client_response())
-    run(send_message(f"{name} is a beautiful name!"))
 ```
 
 ## Philosophy
-* No direct access to flow state.
-* No breaks in the flow with `return` statements.
+* No direct access to state.
+* No breaks in the code flow with `return` statements.
 * No in-memory state, scale-out friendly.
 
 ## Async safety
