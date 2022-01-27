@@ -6,6 +6,9 @@ from dialogs_framework.persistence.persistence import PersistenceProvider
 from dialogs_framework.persistence.in_memory import InMemoryPersistence
 from dialogs_framework.types import dialog, send_message, get_client_response
 from dialogs_framework.gen_dialogs import run_gen_dialog
+from dialogs_framework.dialogs import run_dialog
+
+from .test_dialogs import topic_dialog as run_topic_dialog
 
 
 @dialog(version="1.0")
@@ -251,3 +254,17 @@ def test_dialog_with_no_steps_as_subdialog():
     step2 = run_gen_dialog(dialog_with_no_yield_subdialog(), persistence, "Julia")
     assert step2.is_done
     assert step2.return_value == "Julia"
+
+
+def test_run_dialog_with_gen_dialog():
+    persistence = InMemoryPersistence()
+    step1 = run_dialog(run_topic_dialog(), persistence, "")
+    assert len(step1.messages) == 3
+
+    step2 = run_gen_dialog(topic_dialog(), persistence, "Johnny")
+    assert len(step2.messages) == 2
+    assert step2.messages[0] == "Hi Johnny!"
+
+    step3 = run_gen_dialog(topic_dialog(), persistence, "Peanuts")
+    assert step3.is_done
+    assert step3.return_value == ("Johnny", "Peanuts")
