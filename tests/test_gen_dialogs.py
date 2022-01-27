@@ -1,6 +1,8 @@
 from typing import Tuple
+from time import sleep
+from concurrent.futures.thread import ThreadPoolExecutor
 
-
+from dialogs_framework.persistence.persistence import PersistenceProvider
 from dialogs_framework.persistence.in_memory import InMemoryPersistence
 from dialogs_framework.types import dialog, send_message, get_client_response
 from dialogs_framework.gen_dialogs import run_gen_dialog
@@ -73,6 +75,20 @@ def name_getter_dialog_take_3() -> str:
     yield send_message("Wait! i have another message for you!")
     return name
 
+def run_echo_dialog_task(message: str):
+    persistence: PersistenceProvider = InMemoryPersistence()
+    test_dialog = echo_dialog(message)
+    next_step = run_gen_dialog(test_dialog, persistence, "test")  # type: ignore
+
+    assert len(next_step.messages) == 1
+
+    return next_step.messages[0]
+
+@dialog(version="test")
+def echo_dialog(message: str):
+    # Release thread
+    sleep(0.0001)
+    yield send_message(message)
 
 def test_run_dialog_happy_flow():
     persistence = InMemoryPersistence()
@@ -180,3 +196,12 @@ def test_run_dialog_returns_leftover_messages_when_done():
 
     assert next_step.is_done
     assert next_step.messages == ["what is your name?"]
+
+def test_running_dialogs_concurrently_handles_messages_apart():
+    messages = ["first", "second", "third"]
+    executor = ThreadPoolExecutor(max_workers=len(messages))
+
+    jobs = [executor.submit(run_echo_dialog_task, message) for message in messages]
+    results = [job.result() for job in jobs]
+
+    assert results == messages
