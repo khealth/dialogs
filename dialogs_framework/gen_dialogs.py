@@ -24,7 +24,7 @@ from .generic_types import T, ClientResponse, DialogContext
 
 # this is now VERY similar to run_dialog of dialogs...maybe i can refactor
 def run_gen_dialog(
-    dialog: Dialog[T],
+    dialog: BaseDialog[T],
     persistence: PersistenceProvider,
     client_response: ClientResponse,
     fallback_dialog: Optional[Dialog[T]] = None,
