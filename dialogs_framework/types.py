@@ -1,6 +1,7 @@
 import inspect
+import asyncio
 
-from typing import Generic, TypeVar, Callable, List, Generator, Union
+from typing import Generic, TypeVar, Callable, List, Generator, Union, Awaitable, AsyncGenerator
 from typing_extensions import Protocol, Literal
 from dataclasses import dataclass
 
@@ -39,6 +40,20 @@ class GenDialog(BaseDialog[T]):
     name: str
 
 
+@dataclass(frozen=True)
+class AsyncDialog(BaseDialog[T]):
+    dialog: Callable[[], Awaitable[T]]
+    version: str
+    name: str
+
+
+@dataclass(frozen=True)
+class AsyncGenDialog(BaseDialog[T]):
+    dialog: Callable[[], AsyncGenerator[BaseDialog[T], T]]
+    version: str
+    name: str
+
+
 class SendToClientException(Exception):
     pass
 
@@ -68,6 +83,12 @@ def dialog(version: str = "1.0"):
         def wrapper(*args, **kwargs) -> Dialog[T]:
             def f_closure() -> T:
                 return f(*args, **kwargs)
+
+            if inspect.isasyncgenfunction(f):
+                return AsyncGenDialog(version=version, name=f.__name__, dialog=f_closure)
+
+            if asyncio.iscoroutinefunction(f):
+                return AsyncDialog(version=version, name=f.__name__, dialog=f_closure)
 
             if inspect.isgeneratorfunction(f):
                 return GenDialog(version=version, name=f.__name__, dialog=f_closure)
