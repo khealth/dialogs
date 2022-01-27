@@ -1,13 +1,10 @@
 from itertools import count
-import inspect
-from typing import Counter, Optional, Union, cast
+from typing import Optional, Union, cast
 from functools import partial
-
-from dialogs_framework.dialog_state import DialogState
 
 from .types import (
     BaseDialog,
-    dialog,
+    GenDialog,
     send_message,
     get_client_response,
     DialogStepDone,
@@ -90,13 +87,15 @@ def _run_base_dialog(subdialog: BaseDialog[T], context: DialogContext) -> T:
         send(subdialog.message)
         return_value = None
     elif isinstance(subdialog, Dialog):
+        return_value = subdialog.dialog()
+    elif isinstance(subdialog, GenDialog):
         subdialog_context = DialogContext(
             state=subdialog_state,
             client_response=client_response,
             send=send,
             call_counter=count(),
         )
-        return_value = _run_dialog(subdialog, subdialog_context)
+        return_value = _run_gen_dialog(subdialog, subdialog_context)
     else:
         raise Exception("Unsupported dialog type")
 
@@ -104,16 +103,12 @@ def _run_base_dialog(subdialog: BaseDialog[T], context: DialogContext) -> T:
     return return_value
 
 
-def _run_dialog(dialog: Dialog[T], context: DialogContext) -> T:
-    result = dialog.dialog()
-    if inspect.isgenerator(result):
-        instance = result
-        try:
-            value_for_next_step = None
-            while True:
-                next_step = instance.send(value_for_next_step)
-                value_for_next_step = _run_base_dialog(next_step, context)
-        except StopIteration as ex:
-            return ex.value
-    else:
-        return result
+def _run_gen_dialog(dialog: GenDialog[T], context: DialogContext) -> T:
+    instance = dialog.dialog()
+    try:
+        value_for_next_step = None
+        while True:
+            next_step = instance.send(value_for_next_step)
+            value_for_next_step = _run_base_dialog(next_step, context)
+    except StopIteration as ex:
+        return ex.value

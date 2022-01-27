@@ -1,4 +1,6 @@
-from typing import Generic, TypeVar, Callable, List
+import inspect
+
+from typing import Generic, TypeVar, Callable, List, Generator, Union
 from typing_extensions import Protocol, Literal
 from dataclasses import dataclass
 
@@ -30,6 +32,13 @@ class Dialog(BaseDialog[T]):
     name: str
 
 
+@dataclass(frozen=True)
+class GenDialog(BaseDialog[T]):
+    dialog: Callable[[], Generator[BaseDialog[T], T, T]]
+    version: str
+    name: str
+
+
 class SendToClientException(Exception):
     pass
 
@@ -47,7 +56,7 @@ class VersionMismatchException(Exception):
 def dialog(version: str = "1.0"):
     """
     This decorator wraps any function and turns it into a dialog, i.e.
-    an object you can call with run().
+    an object you can call with run(), for dialogs or yield for generator dialogs.
 
     When you call the wrapped function f, with its parameters, it gets
     packaged as a closure inside a Dialog class. This is necessary
@@ -55,10 +64,13 @@ def dialog(version: str = "1.0"):
     when called by run().
     """
 
-    def decorator(f: Callable[..., T]) -> Callable[..., Dialog[T]]:
+    def decorator(f: Callable[..., T]) -> Callable[..., Union[Dialog[T], GenDialog[T]]]:
         def wrapper(*args, **kwargs) -> Dialog[T]:
             def f_closure() -> T:
                 return f(*args, **kwargs)
+
+            if inspect.isgeneratorfunction(f):
+                return GenDialog(version=version, name=f.__name__, dialog=f_closure)
 
             return Dialog(version=version, name=f.__name__, dialog=f_closure)
 
