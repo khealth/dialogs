@@ -25,7 +25,7 @@ from .fallback_dialog import run_fallback_dialog
 from .generic_types import T, ClientResponse, DialogContext
 
 
-# this is now VERY simmilar to run_dialog of dialogs...maybe i can refactor
+# this is now VERY similar to run_dialog of dialogs...maybe i can refactor
 def run_gen_dialog(
     dialog: Dialog[T],
     persistence: PersistenceProvider,
@@ -64,7 +64,7 @@ def run_gen_dialog(
 
 _run_fallback_dialog = partial(run_fallback_dialog, run_gen_dialog)
 
-#  this is now VERY simmilar to run of dialogs...maybe i can refactor
+#  this is now VERY similar to run of dialogs...maybe i can refactor
 def _run_base_dialog(subdialog: BaseDialog[T], context: DialogContext) -> T:
     state = context.state
     client_response = context.client_response
