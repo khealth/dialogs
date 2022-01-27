@@ -1,7 +1,9 @@
 from itertools import count
-from typing import Iterator, TypeVar, List, cast, Union, Generic, Optional
-from dataclasses import dataclass
+from functools import partial
+from typing import cast, Union, Optional
 from contextvars import ContextVar
+
+from dialogs_framework.fallback_dialog import run_fallback_dialog
 
 from .types import (
     Dialog,
@@ -14,23 +16,9 @@ from .types import (
     SendMessageFunction,
     VersionMismatchException,
 )
+from .generic_types import ClientResponse, ServerMessage, T, DialogContext
 from .persistence.persistence import PersistenceProvider
-from .dialog_state import DialogState
 from .message_queue import MessageQueue
-
-T = TypeVar("T")
-ClientResponse = TypeVar("ClientResponse")
-ServerMessage = TypeVar("ServerMessage")
-ServerResponse = List[ServerMessage]
-RunDialogReturnType = Union[DialogStepDone[T, ServerMessage], DialogStepNotDone[ServerMessage]]
-
-
-@dataclass(frozen=True)
-class DialogContext(Generic[ClientResponse, ServerMessage]):
-    send: SendMessageFunction[ServerMessage]
-    client_response: ClientResponse
-    state: DialogState
-    call_counter: Iterator[int]
 
 
 dialog_context: ContextVar[DialogContext] = ContextVar("dialog_context")
@@ -88,19 +76,7 @@ def run_dialog(
         return DialogStepNotDone(messages=messages)
 
 
-def _run_fallback_dialog(client_response, dialog, persistence, fallback_dialog, state):
-    messages: ServerResponse = []
-    if fallback_dialog is not None:
-        next_step: RunDialogReturnType = run_dialog(fallback_dialog, persistence, client_response)
-        if not next_step.is_done:
-            return next_step
-        messages = next_step.messages
-        # Fallback dialog completed
-        state.reset(dialog, fallback_mode=False)
-
-    next_step = run_dialog(dialog, persistence, client_response, fallback_dialog)
-    next_step.messages = messages + next_step.messages
-    return next_step
+_run_fallback_dialog = partial(run_fallback_dialog, run_dialog)
 
 
 def run(subdialog: BaseDialog[T]) -> T:

@@ -7,6 +7,7 @@ from dialogs_framework.persistence.in_memory import InMemoryPersistence
 from dialogs_framework.types import dialog, send_message, get_client_response
 from dialogs_framework.gen_dialogs import run_gen_dialog
 
+
 @dialog(version="1.0")
 def fallback_without_client_response() -> None:
     yield send_message("Falling back!")
@@ -20,19 +21,22 @@ def name_getter_dialog() -> str:
     result = yield get_client_response()
     return result
 
+
 @dialog(version="1.0")
 def topic_dialog() -> Tuple[str, str]:
     name = yield name_getter_dialog()
     yield send_message(f"Hi {name}!")
     yield send_message("What would you like to talk about")
-    topic: str = yield get_client_response()
+    topic = yield get_client_response()
     return name, topic
+
 
 @dialog(version="1.1")
 def name_getter_dialog_take_2() -> str:
     yield send_message("Tell me your name! Now!!!")
     result = yield get_client_response()
     return result
+
 
 @dialog(version="1.0")
 def fallback_with_client_response() -> None:
@@ -54,6 +58,7 @@ def versioned_subdialog_take_2() -> str:
     result = yield get_client_response()
     return result
 
+
 @dialog(version="1.0")
 def dialog_with_subdialog() -> str:
     yield versioned_subdialog()
@@ -71,9 +76,17 @@ def dialog_with_subdialog_take_2() -> str:
 @dialog(version="1.0")
 def name_getter_dialog_take_3() -> str:
     yield send_message("I need to know your name")
-    name: str = yield get_client_response()
+    name = yield get_client_response()
     yield send_message("Wait! i have another message for you!")
     return name
+
+
+@dialog(version="test")
+def echo_dialog(message: str):
+    # Release thread
+    sleep(0.0001)
+    yield send_message(message)
+
 
 def run_echo_dialog_task(message: str):
     persistence: PersistenceProvider = InMemoryPersistence()
@@ -84,11 +97,19 @@ def run_echo_dialog_task(message: str):
 
     return next_step.messages[0]
 
-@dialog(version="test")
-def echo_dialog(message: str):
-    # Release thread
-    sleep(0.0001)
-    yield send_message(message)
+
+@dialog(version="1.0")
+def no_yield_dialog() -> str:
+    return "hello!"
+
+
+@dialog(version="1.0")
+def dialog_with_no_yield_subdialog() -> str:
+    next_message = yield no_yield_dialog()
+    yield send_message(next_message)
+    result = yield get_client_response()
+    return result
+
 
 def test_run_dialog_happy_flow():
     persistence = InMemoryPersistence()
@@ -100,7 +121,7 @@ def test_run_dialog_happy_flow():
     step2 = run_gen_dialog(name_getter_dialog(), persistence, "Johnny")
     assert step2.is_done
     assert step2.return_value == "Johnny"
-    
+
 
 def test_run_dialog_with_subdialog_happy_flow():
     persistence = InMemoryPersistence()
@@ -125,9 +146,12 @@ def test_run_dialog_raise_exception_changed_version():
     assert step2.messages == ["Tell me your name! Now!!!"]
     assert not step2.is_done
 
+
 def test_run_dialog_with_fallback_without_client_response():
     persistence = InMemoryPersistence()
-    step1 = run_gen_dialog(name_getter_dialog(), persistence, "", fallback_without_client_response())
+    step1 = run_gen_dialog(
+        name_getter_dialog(), persistence, "", fallback_without_client_response()
+    )
     assert step1.messages == ["Hello.", "Nice to meet you!", "what is your name?"]
 
     step2 = run_gen_dialog(
@@ -167,7 +191,9 @@ def test_run_dialog_with_fallback_with_client_response():
 
 def test_run_dialog_with_fallback_on_subdialog_version_mismatch():
     persistence = InMemoryPersistence()
-    step1 = run_gen_dialog(dialog_with_subdialog(), persistence, "", fallback_without_client_response())
+    step1 = run_gen_dialog(
+        dialog_with_subdialog(), persistence, "", fallback_without_client_response()
+    )
     assert step1.messages == ["I am a dialog"]
 
     step2 = run_gen_dialog(
@@ -197,6 +223,7 @@ def test_run_dialog_returns_leftover_messages_when_done():
     assert next_step.is_done
     assert next_step.messages == ["what is your name?"]
 
+
 def test_running_dialogs_concurrently_handles_messages_apart():
     messages = ["first", "second", "third"]
     executor = ThreadPoolExecutor(max_workers=len(messages))
@@ -205,3 +232,22 @@ def test_running_dialogs_concurrently_handles_messages_apart():
     results = [job.result() for job in jobs]
 
     assert results == messages
+
+
+def test_dialog_with_no_steps():
+    persistence = InMemoryPersistence()
+
+    next_step = run_gen_dialog(no_yield_dialog(), persistence, "")
+    assert next_step.is_done
+    assert next_step.return_value == "hello!"
+
+
+def test_dialog_with_no_steps_as_subdialog():
+    persistence = InMemoryPersistence()
+    step1 = run_gen_dialog(dialog_with_no_yield_subdialog(), persistence, "")
+    assert step1.messages == ["hello!"]
+    assert not step1.is_done
+
+    step2 = run_gen_dialog(dialog_with_no_yield_subdialog(), persistence, "Julia")
+    assert step2.is_done
+    assert step2.return_value == "Julia"

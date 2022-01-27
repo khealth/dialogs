@@ -1,4 +1,5 @@
 from .dialogs import run_dialog, run
+from .gen_dialogs import run_gen_dialog
 from .types import (
     dialog,
     send_message,
