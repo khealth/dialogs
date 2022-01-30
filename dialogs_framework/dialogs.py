@@ -1,6 +1,5 @@
-from itertools import count
 from functools import partial
-from typing import cast, Union, Optional
+from typing import cast, Union, Optional, overload
 from contextvars import ContextVar
 
 from dialogs_framework.fallback_dialog import run_fallback_dialog
@@ -12,7 +11,6 @@ from .types import (
     send_message,
     DialogStepDone,
     DialogStepNotDone,
-    BaseDialog,
     SendMessageFunction,
     VersionMismatchException,
 )
@@ -31,10 +29,12 @@ dialog_context: ContextVar[DialogContext] = ContextVar("dialog_context")
 
 
 def run_dialog(
-    dialog: BaseDialog[T],
+    dialog: Union[get_client_response[T], send_message[ServerMessage], Dialog[T]],
     persistence: PersistenceProvider,
     client_response: ClientResponse,
-    fallback_dialog: Optional[BaseDialog[T]] = None,
+    fallback_dialog: Optional[
+        Union[get_client_response[T], send_message[ServerMessage], Dialog[T]]
+    ] = None,
 ) -> Union[DialogStepDone[T, ServerMessage], DialogStepNotDone[ServerMessage]]:
     """
     This is the interface for calling a dialog from an external location.
@@ -67,7 +67,7 @@ def run_dialog(
     messages = queue.dequeue_all()
     persistence.save_state(state)
     if is_done:
-        return DialogStepDone(return_value=return_value, messages=messages)
+        return DialogStepDone(return_value=cast(T, return_value), messages=messages)
     else:
         return DialogStepNotDone(messages=messages)
 
@@ -75,7 +75,19 @@ def run_dialog(
 _run_fallback_dialog = partial(run_fallback_dialog, run_dialog)
 
 
-def run(subdialog: BaseDialog[T]) -> T:
+@overload
+def run(subdialog: send_message[ServerMessage]) -> None:
+    ...
+
+
+@overload
+def run(subdialog: Union[get_client_response[T], Dialog[T]]) -> T:
+    ...
+
+
+def run(
+    subdialog: Union[send_message[ServerMessage], Union[get_client_response[T], Dialog[T]]]
+) -> Optional[T]:
     """
     This function wraps the execution of all subdialogs.
 
@@ -110,7 +122,7 @@ def run(subdialog: BaseDialog[T]) -> T:
     if subdialog_state.is_done:
         return subdialog_state.return_value
 
-    return_value: T
+    return_value: Optional[T]
     if isinstance(subdialog, get_client_response):
         if not subdialog_state.sent_to_client:
             subdialog_state.sent_to_client = True

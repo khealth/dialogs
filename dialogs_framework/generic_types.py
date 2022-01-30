@@ -22,7 +22,7 @@ class DialogContext(Generic[ClientResponse, ServerMessage]):
 
 def build_dialog_context(
     send: SendMessageFunction, client_response: ClientResponse, state: DialogState
-):
+) -> DialogContext:
     return DialogContext(
         send=send, client_response=client_response, state=state, call_counter=count()
     )

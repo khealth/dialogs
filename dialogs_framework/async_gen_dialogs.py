@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional, Union, cast, overload
 
 from .types import (
     AsyncDialog,
@@ -13,6 +13,8 @@ from .types import (
     SendToClientException,
     Dialog,
     VersionMismatchException,
+    get_client_response,
+    send_message,
 )
 from .message_queue import MessageQueue
 from .persistence.persistence import PersistenceProvider
@@ -38,10 +40,26 @@ class dialog_result(BaseDialog[T]):
 
 
 async def run_async_gen_dialog(
-    dialog: BaseDialog[T],
+    dialog: Union[
+        get_client_response[T],
+        send_message[ServerMessage],
+        Dialog[T],
+        GenDialog[T],
+        AsyncDialog[T],
+        AsyncGenDialog[T],
+    ],
     persistence: PersistenceProvider,
     client_response: ClientResponse,
-    fallback_dialog: Optional[Dialog[T]] = None,
+    fallback_dialog: Optional[
+        Union[
+            get_client_response[T],
+            send_message[ServerMessage],
+            Dialog[T],
+            GenDialog[T],
+            AsyncDialog[T],
+            AsyncGenDialog[T],
+        ]
+    ] = None,
 ) -> Union[DialogStepDone[T, ServerMessage], DialogStepNotDone[ServerMessage]]:
     queue = MessageQueue[ServerMessage]()
     send: SendMessageFunction = queue.enqueue
@@ -70,7 +88,7 @@ async def run_async_gen_dialog(
     messages = queue.dequeue_all()
     persistence.save_state(state)
     if is_done:
-        return DialogStepDone(return_value=return_value, messages=messages)
+        return DialogStepDone(return_value=cast(T, return_value), messages=messages)
     else:
         return DialogStepNotDone(messages=messages)
 
@@ -94,7 +112,32 @@ async def _run_fallback_dialog(
     return next_step
 
 
-async def _run_base_dialog(subdialog: BaseDialog[T], context: DialogContext) -> T:
+@overload
+async def _run_base_dialog(subdialog: send_message[ServerMessage], context: DialogContext) -> None:
+    ...
+
+
+@overload
+async def _run_base_dialog(
+    subdialog: Union[
+        get_client_response[T], Dialog[T], GenDialog[T], AsyncDialog[T], AsyncGenDialog[T]
+    ],
+    context: DialogContext,
+) -> T:
+    ...
+
+
+async def _run_base_dialog(
+    subdialog: Union[
+        get_client_response[T],
+        send_message[ServerMessage],
+        Dialog[T],
+        GenDialog[T],
+        AsyncDialog[T],
+        AsyncGenDialog[T],
+    ],
+    context: DialogContext,
+) -> Optional[T]:
     state = context.state
     client_response = context.client_response
     send = context.send

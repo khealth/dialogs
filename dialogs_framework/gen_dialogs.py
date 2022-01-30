@@ -1,4 +1,4 @@
-from typing import Optional, Union, cast
+from typing import Optional, Union, cast, overload
 from functools import partial
 
 from dialogs_framework.dialog_state import DialogState
@@ -24,10 +24,12 @@ from .generic_types import T, ClientResponse, DialogContext, build_dialog_contex
 
 
 def run_gen_dialog(
-    dialog: BaseDialog[T],
+    dialog: Union[get_client_response[T], send_message[ServerMessage], Dialog[T], GenDialog[T]],
     persistence: PersistenceProvider,
     client_response: ClientResponse,
-    fallback_dialog: Optional[Dialog[T]] = None,
+    fallback_dialog: Optional[
+        Union[get_client_response[T], send_message[ServerMessage], Dialog[T], GenDialog[T]]
+    ] = None,
 ) -> Union[DialogStepDone[T, ServerMessage], DialogStepNotDone[ServerMessage]]:
     queue = MessageQueue[ServerMessage]()
     send: SendMessageFunction = queue.enqueue
@@ -50,7 +52,7 @@ def run_gen_dialog(
     messages = queue.dequeue_all()
     persistence.save_state(state)
     if is_done:
-        return DialogStepDone(return_value=return_value, messages=messages)
+        return DialogStepDone(return_value=cast(T, return_value), messages=messages)
     else:
         return DialogStepNotDone(messages=messages)
 
@@ -58,7 +60,22 @@ def run_gen_dialog(
 _run_fallback_dialog = partial(run_fallback_dialog, run_gen_dialog)
 
 
-def _run_base_dialog(subdialog: BaseDialog[T], context: DialogContext) -> T:
+@overload
+def _run_base_dialog(subdialog: send_message[ServerMessage], context: DialogContext) -> None:
+    ...
+
+
+@overload
+def _run_base_dialog(
+    subdialog: Union[get_client_response[T], Dialog[T], GenDialog[T]], context: DialogContext
+) -> T:
+    ...
+
+
+def _run_base_dialog(
+    subdialog: Union[get_client_response[T], send_message[ServerMessage], Dialog[T], GenDialog[T]],
+    context: DialogContext,
+) -> Optional[T]:
     state = context.state
     client_response = context.client_response
     send = context.send
@@ -83,7 +100,7 @@ def run_gen_dialog_step(
     client_response: ClientResponse,
     send: SendMessageFunction,
 ):
-    return_value: T
+    return_value: Optional[T]
     if isinstance(step, get_client_response):
         if not step_state.sent_to_client:
             step_state.sent_to_client = True
