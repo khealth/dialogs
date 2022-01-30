@@ -79,7 +79,9 @@ def dialog(version: str = "1.0"):
     when called by run().
     """
 
-    def decorator(f: Callable[..., T]) -> Callable[..., Union[Dialog[T], GenDialog[T]]]:
+    def decorator(
+        f: Callable[..., T]
+    ) -> Callable[..., Union[Dialog[T], GenDialog[T], AsyncGenDialog[T], AsyncDialog[T]]]:
         def wrapper(*args, **kwargs):
             def f_closure() -> T:
                 return f(*args, **kwargs)
