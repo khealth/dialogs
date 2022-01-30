@@ -80,7 +80,7 @@ def dialog(version: str = "1.0"):
     """
 
     def decorator(f: Callable[..., T]) -> Callable[..., Union[Dialog[T], GenDialog[T]]]:
-        def wrapper(*args, **kwargs) -> Dialog[T]:
+        def wrapper(*args, **kwargs):
             def f_closure() -> T:
                 return f(*args, **kwargs)
 

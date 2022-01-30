@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Generator
 from time import sleep
 from concurrent.futures.thread import ThreadPoolExecutor
 
@@ -12,12 +12,12 @@ from .test_dialogs import topic_dialog as run_topic_dialog
 
 
 @dialog(version="1.0")
-def fallback_without_client_response() -> None:
+def fallback_without_client_response():
     yield send_message("Falling back!")
 
 
 @dialog(version="1.0")
-def name_getter_dialog() -> str:
+def name_getter_dialog():
     yield send_message("Hello.")
     yield send_message("Nice to meet you!")
     yield send_message("what is your name?")
@@ -26,7 +26,7 @@ def name_getter_dialog() -> str:
 
 
 @dialog(version="1.0")
-def topic_dialog() -> Tuple[str, str]:
+def topic_dialog():
     name = yield name_getter_dialog()
     yield send_message(f"Hi {name}!")
     yield send_message("What would you like to talk about")
@@ -35,49 +35,49 @@ def topic_dialog() -> Tuple[str, str]:
 
 
 @dialog(version="1.1")
-def name_getter_dialog_take_2() -> str:
+def name_getter_dialog_take_2():
     yield send_message("Tell me your name! Now!!!")
     result = yield get_client_response()
     return result
 
 
 @dialog(version="1.0")
-def fallback_with_client_response() -> None:
+def fallback_with_client_response():
     yield send_message("Falling back!")
     yield get_client_response()
     yield send_message("Get up fool")
 
 
 @dialog(version="1.0")
-def versioned_subdialog() -> str:
+def versioned_subdialog():
     yield send_message("I am a dialog")
     result = yield get_client_response()
     return result
 
 
 @dialog(version="1.1")
-def versioned_subdialog_take_2() -> str:
+def versioned_subdialog_take_2():
     yield send_message("I have a different version, HA! HA! HA!")
     result = yield get_client_response()
     return result
 
 
 @dialog(version="1.0")
-def dialog_with_subdialog() -> str:
+def dialog_with_subdialog():
     yield versioned_subdialog()
     result = yield get_client_response()
     return result
 
 
 @dialog(version="1.0")
-def dialog_with_subdialog_take_2() -> str:
+def dialog_with_subdialog_take_2():
     yield versioned_subdialog_take_2()
     result = yield get_client_response()
     return result
 
 
 @dialog(version="1.0")
-def name_getter_dialog_take_3() -> str:
+def name_getter_dialog_take_3():
     yield send_message("I need to know your name")
     name = yield get_client_response()
     yield send_message("Wait! i have another message for you!")
@@ -102,12 +102,12 @@ def run_echo_dialog_task(message: str):
 
 
 @dialog(version="1.0")
-def no_yield_dialog() -> str:
+def no_yield_dialog():
     return "hello!"
 
 
 @dialog(version="1.0")
-def dialog_with_no_yield_subdialog() -> str:
+def dialog_with_no_yield_subdialog():
     next_message = yield no_yield_dialog()
     yield send_message(next_message)
     result = yield get_client_response()

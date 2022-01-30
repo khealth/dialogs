@@ -13,12 +13,12 @@ from .test_dialogs import topic_dialog as run_topic_dialog
 
 
 @dialog(version="1.0")
-def fallback_without_client_response() -> None:
+def fallback_without_client_response():
     yield send_message("Falling back!")
 
 
 @dialog(version="1.0")
-def name_getter_dialog() -> str:
+def name_getter_dialog():
     yield send_message("Hello.")
     yield send_message("Nice to meet you!")
     yield send_message("what is your name?")
@@ -27,7 +27,7 @@ def name_getter_dialog() -> str:
 
 
 @dialog(version="1.0")
-def topic_dialog() -> Tuple[str, str]:
+def topic_dialog():
     name = yield name_getter_dialog()
     yield send_message(f"Hi {name}!")
     yield send_message("What would you like to talk about")
@@ -36,49 +36,49 @@ def topic_dialog() -> Tuple[str, str]:
 
 
 @dialog(version="1.1")
-def name_getter_dialog_take_2() -> str:
+def name_getter_dialog_take_2():
     yield send_message("Tell me your name! Now!!!")
     result = yield get_client_response()
     return result
 
 
 @dialog(version="1.0")
-def fallback_with_client_response() -> None:
+def fallback_with_client_response():
     yield send_message("Falling back!")
     yield get_client_response()
     yield send_message("Get up fool")
 
 
 @dialog(version="1.0")
-def versioned_subdialog() -> str:
+def versioned_subdialog():
     yield send_message("I am a dialog")
     result = yield get_client_response()
     return result
 
 
 @dialog(version="1.1")
-def versioned_subdialog_take_2() -> str:
+def versioned_subdialog_take_2():
     yield send_message("I have a different version, HA! HA! HA!")
     result = yield get_client_response()
     return result
 
 
 @dialog(version="1.0")
-def dialog_with_subdialog() -> str:
+def dialog_with_subdialog():
     yield versioned_subdialog()
     result = yield get_client_response()
     return result
 
 
 @dialog(version="1.0")
-def dialog_with_subdialog_take_2() -> str:
+def dialog_with_subdialog_take_2():
     yield versioned_subdialog_take_2()
     result = yield get_client_response()
     return result
 
 
 @dialog(version="1.0")
-def name_getter_dialog_take_3() -> str:
+def name_getter_dialog_take_3():
     yield send_message("I need to know your name")
     name = yield get_client_response()
     yield send_message("Wait! i have another message for you!")
@@ -103,12 +103,12 @@ async def run_echo_dialog_task(message: str):
 
 
 @dialog(version="1.0")
-def no_yield_dialog() -> str:
+def no_yield_dialog():
     return "hello!"
 
 
 @dialog(version="1.0")
-def dialog_with_no_yield_subdialog() -> str:
+def dialog_with_no_yield_subdialog():
     next_message = yield no_yield_dialog()
     yield send_message(next_message)
     result = yield get_client_response()
@@ -116,7 +116,7 @@ def dialog_with_no_yield_subdialog() -> str:
 
 
 @dialog(version="1.0")
-async def dialog_with_async() -> str:
+async def dialog_with_async():
     yield send_message("I need to know your name")
     await asyncio.sleep(0.01)
     name = yield get_client_response()
@@ -130,10 +130,36 @@ async def dialog_with_async() -> str:
 
 
 @dialog(version="1.0")
-def sub_dialog_with_async() -> str:
+def sub_dialog_with_async():
     name = yield dialog_with_async()
     yield send_message(f"Your name is {name}")
     return name
+
+
+@dialog(version="1.0")
+async def async_dialog_yield_no_await():
+    yield send_message("I need to know your name")
+    name = yield get_client_response()
+    yield send_message(f"Hello {name}!")
+
+
+@dialog(version="1.0")
+async def async_dialog_await_no_yield():
+    await asyncio.sleep(0.01)
+    return "done"
+
+
+@dialog(version="1.0")
+async def async_dialog_no_await_no_yield():
+    return "done"
+
+
+@dialog(version="1.0")
+async def async_dialog_no_result():
+    yield send_message("I need to know your name")
+    await asyncio.sleep(0.01)
+    name = yield get_client_response()
+    yield send_message("Wait! i have another message for you!")
 
 
 @pytest.mark.asyncio
@@ -327,3 +353,23 @@ async def test_subdialog_with_async():
     assert step2.messages[1] == "Your name is Johnny"
     assert step2.is_done
     assert step2.return_value == ("Johnny")
+
+
+@pytest.mark.asyncio
+async def test_async_dialog_no_await_yes_yield():
+    persistence = InMemoryPersistence()
+    step1 = await run_async_gen_dialog(async_dialog_yield_no_await(), persistence, "")
+    assert len(step1.messages) == 1
+
+    step2 = await run_async_gen_dialog(async_dialog_yield_no_await(), persistence, "Johnny")
+    assert len(step2.messages) == 1
+    assert step2.messages[0] == "Hello Johnny!"
+    assert step2.is_done
+
+
+@pytest.mark.asyncio
+async def test_async_dialog_yes_await_no_yield():
+    persistence = InMemoryPersistence()
+    step1 = await run_async_gen_dialog(async_dialog_await_no_yield(), persistence, "")
+    assert step1.is_done
+    assert step1.return_value == "done"

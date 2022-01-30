@@ -165,7 +165,7 @@ async def _run_gen_dialog(dialog: GenDialog[T], context: DialogContext) -> T:
         return ex.value
 
 
-async def _run_async_gen_dialog(dialog: AsyncGenDialog[T], context: DialogContext) -> T:
+async def _run_async_gen_dialog(dialog: AsyncGenDialog[T], context: DialogContext):
     instance = dialog.dialog()
     try:
         value_for_next_step = None
@@ -175,4 +175,4 @@ async def _run_async_gen_dialog(dialog: AsyncGenDialog[T], context: DialogContex
     except StopAsyncIteration:
         # async iterator does not return a value...so just return. use yield dialog_result
         # to setup a dialog result, instead
-        return
+        pass
