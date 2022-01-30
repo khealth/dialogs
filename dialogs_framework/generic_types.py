@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from itertools import count
 
 from typing import TypeVar, List, Union, Generic, Iterator
 from .types import DialogStepNotDone, DialogStepDone, SendMessageFunction
@@ -17,3 +18,11 @@ class DialogContext(Generic[ClientResponse, ServerMessage]):
     client_response: ClientResponse
     state: DialogState
     call_counter: Iterator[int]
+
+
+def build_dialog_context(
+    send: SendMessageFunction, client_response: ClientResponse, state: DialogState
+):
+    return DialogContext(
+        send=send, client_response=client_response, state=state, call_counter=count()
+    )

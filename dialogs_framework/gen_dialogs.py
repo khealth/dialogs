@@ -1,6 +1,7 @@
-from itertools import count
 from typing import Optional, Union, cast
 from functools import partial
+
+from dialogs_framework.dialog_state import DialogState
 
 from .types import (
     BaseDialog,
@@ -19,10 +20,9 @@ from .message_queue import MessageQueue
 from .persistence.persistence import PersistenceProvider
 from .fallback_dialog import run_fallback_dialog
 
-from .generic_types import T, ClientResponse, DialogContext
+from .generic_types import T, ClientResponse, DialogContext, build_dialog_context
 
 
-# this is now VERY similar to run_dialog of dialogs...maybe i can refactor
 def run_gen_dialog(
     dialog: BaseDialog[T],
     persistence: PersistenceProvider,
@@ -36,13 +36,9 @@ def run_gen_dialog(
     if state.handling_fallback and fallback_dialog is not None:
         return _run_fallback_dialog(client_response, dialog, persistence, fallback_dialog, state)
 
-    context = DialogContext(
-        send=send, state=state, call_counter=count(), client_response=client_response
-    )
-
     is_done = False
     try:
-        return_value = _run_base_dialog(dialog, context)
+        return_value = _run_base_dialog(dialog, build_dialog_context(send, client_response, state))
         is_done = True
     except VersionMismatchException:
         state.reset(dialog, fallback_mode=True)
@@ -61,7 +57,7 @@ def run_gen_dialog(
 
 _run_fallback_dialog = partial(run_fallback_dialog, run_gen_dialog)
 
-#  this is now VERY similar to run of dialogs...maybe i can refactor
+
 def _run_base_dialog(subdialog: BaseDialog[T], context: DialogContext) -> T:
     state = context.state
     client_response = context.client_response
@@ -76,30 +72,36 @@ def _run_base_dialog(subdialog: BaseDialog[T], context: DialogContext) -> T:
     if subdialog_state.is_done:
         return subdialog_state.return_value
 
+    return_value = run_gen_dialog_step(subdialog, subdialog_state, client_response, send)
+    subdialog_state.return_value = return_value
+    return return_value
+
+
+def run_gen_dialog_step(
+    step: BaseDialog[T],
+    step_state: DialogState,
+    client_response: ClientResponse,
+    send: SendMessageFunction,
+):
     return_value: T
-    if isinstance(subdialog, get_client_response):
-        if not subdialog_state.sent_to_client:
-            subdialog_state.sent_to_client = True
+    if isinstance(step, get_client_response):
+        if not step_state.sent_to_client:
+            step_state.sent_to_client = True
             raise SendToClientException
         else:
             return_value = cast(T, client_response)
-    elif isinstance(subdialog, send_message):
-        send(subdialog.message)
+    elif isinstance(step, send_message):
+        send(step.message)
         return_value = None
-    elif isinstance(subdialog, Dialog):
-        return_value = subdialog.dialog()
-    elif isinstance(subdialog, GenDialog):
-        subdialog_context = DialogContext(
-            state=subdialog_state,
-            client_response=client_response,
-            send=send,
-            call_counter=count(),
+    elif isinstance(step, Dialog):
+        return_value = step.dialog()
+    elif isinstance(step, GenDialog):
+        return_value = _run_gen_dialog(
+            step, build_dialog_context(send, client_response, step_state)
         )
-        return_value = _run_gen_dialog(subdialog, subdialog_context)
     else:
         raise Exception("Unsupported dialog type")
 
-    subdialog_state.return_value = return_value
     return return_value
 
 

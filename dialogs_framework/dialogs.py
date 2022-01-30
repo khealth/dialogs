@@ -16,7 +16,7 @@ from .types import (
     SendMessageFunction,
     VersionMismatchException,
 )
-from .generic_types import ClientResponse, ServerMessage, T, DialogContext
+from .generic_types import ClientResponse, ServerMessage, T, DialogContext, build_dialog_context
 from .persistence.persistence import PersistenceProvider
 from .message_queue import MessageQueue
 
@@ -53,9 +53,7 @@ def run_dialog(
     if state.handling_fallback and fallback_dialog is not None:
         return _run_fallback_dialog(client_response, dialog, persistence, fallback_dialog, state)
 
-    dialog_context.set(
-        DialogContext(send=send, state=state, call_counter=count(), client_response=client_response)
-    )
+    dialog_context.set(build_dialog_context(send, client_response, state))
 
     is_done = False
     try:
@@ -127,14 +125,7 @@ def run(subdialog: BaseDialog[T]) -> T:
     elif isinstance(subdialog, Dialog):
         # This token is used to return to the parent context after
         # the subdialog has finished its execution.
-        token = dialog_context.set(
-            DialogContext(
-                state=subdialog_state,
-                client_response=client_response,
-                send=send,
-                call_counter=count(),
-            )
-        )
+        token = dialog_context.set(build_dialog_context(send, client_response, subdialog_state))
         return_value = subdialog.dialog()  # type: ignore
         dialog_context.reset(token)
     else:

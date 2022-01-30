@@ -1,14 +1,12 @@
 from dataclasses import dataclass
 from itertools import count
-from typing import Optional, Union, cast
+from typing import Optional, Union
 
 from .types import (
     AsyncDialog,
     AsyncGenDialog,
     BaseDialog,
     GenDialog,
-    send_message,
-    get_client_response,
     DialogStepDone,
     ServerMessage,
     DialogStepNotDone,
@@ -20,8 +18,17 @@ from .types import (
 from .message_queue import MessageQueue
 from .persistence.persistence import PersistenceProvider
 
-from .generic_types import T, ClientResponse, DialogContext, RunDialogReturnType, ServerResponse
+from .generic_types import (
+    T,
+    ClientResponse,
+    DialogContext,
+    RunDialogReturnType,
+    ServerResponse,
+    build_dialog_context,
+)
 from .dialog_state import DialogState
+
+from .gen_dialogs import run_gen_dialog_step
 
 
 @dataclass(frozen=True)
@@ -31,7 +38,6 @@ class dialog_result(BaseDialog[T]):
     version: str = "1.0"
 
 
-# this is now VERY similar to run_dialog of dialogs...maybe i can refactor
 async def run_async_gen_dialog(
     dialog: BaseDialog[T],
     persistence: PersistenceProvider,
@@ -47,13 +53,11 @@ async def run_async_gen_dialog(
             client_response, dialog, persistence, fallback_dialog, state
         )
 
-    context = DialogContext(
-        send=send, state=state, call_counter=count(), client_response=client_response
-    )
-
     is_done = False
     try:
-        return_value = await _run_base_dialog(dialog, context)
+        return_value = await _run_base_dialog(
+            dialog, build_dialog_context(send, client_response, state)
+        )
         is_done = True
     except VersionMismatchException:
         state.reset(dialog, fallback_mode=True)
@@ -91,7 +95,6 @@ async def _run_fallback_dialog(
     return next_step
 
 
-#  this is now VERY similar to run of dialogs...maybe i can refactor
 async def _run_base_dialog(subdialog: BaseDialog[T], context: DialogContext) -> T:
     state = context.state
     client_response = context.client_response
@@ -107,37 +110,19 @@ async def _run_base_dialog(subdialog: BaseDialog[T], context: DialogContext) -> 
         return subdialog_state.return_value
 
     return_value: T
-    if isinstance(subdialog, get_client_response):
-        if not subdialog_state.sent_to_client:
-            subdialog_state.sent_to_client = True
-            raise SendToClientException
-        else:
-            return_value = cast(T, client_response)
-    elif isinstance(subdialog, send_message):
-        send(subdialog.message)
-        return_value = None
-    elif isinstance(subdialog, Dialog):
-        return_value = subdialog.dialog()
-    elif isinstance(subdialog, GenDialog):
-        subdialog_context = DialogContext(
-            state=subdialog_state,
-            client_response=client_response,
-            send=send,
-            call_counter=count(),
+    if isinstance(subdialog, GenDialog):
+        # for gen_dialog we still need to await, in case it has a subdialog that awaits
+        return_value = await _run_gen_dialog(
+            subdialog, build_dialog_context(send, client_response, subdialog_state)
         )
-        return_value = await _run_gen_dialog(subdialog, subdialog_context)
     elif isinstance(subdialog, AsyncDialog):
         return_value = await subdialog.dialog()
     elif isinstance(subdialog, AsyncGenDialog):
-        subdialog_context = DialogContext(
-            state=subdialog_state,
-            client_response=client_response,
-            send=send,
-            call_counter=count(),
-        )
         # async generators cannot return a value (https://www.python.org/dev/peps/pep-0525/#asynchronous-generators).
         # use yield to dialog_result keeping the result value for when this policy will change.
-        return_value = await _run_async_gen_dialog(subdialog, subdialog_context)
+        return_value = await _run_async_gen_dialog(
+            subdialog, build_dialog_context(send, client_response, subdialog_state)
+        )
         if (
             subdialog_state.is_done
         ):  # if dialog_result was used then this is the actual value. stop here
@@ -148,7 +133,8 @@ async def _run_base_dialog(subdialog: BaseDialog[T], context: DialogContext) -> 
         return_value = subdialog.value
         state.return_value = subdialog.value
     else:
-        raise Exception("Unsupported dialog type")
+        # the rest is executed in the same manner as regular gen dialogs
+        return_value = run_gen_dialog_step(subdialog, subdialog_state, client_response, send)
 
     subdialog_state.return_value = return_value
     return return_value
