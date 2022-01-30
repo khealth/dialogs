@@ -94,7 +94,7 @@ def run_gen_dialog_step(
         send(step.message)
         return_value = None
     elif isinstance(step, Dialog):
-        return_value = step.dialog()
+        return_value = step.dialog()  # type: ignore
     elif isinstance(step, GenDialog):
         return_value = _run_gen_dialog(
             step, build_dialog_context(send, client_response, step_state)
@@ -106,7 +106,7 @@ def run_gen_dialog_step(
 
 
 def _run_gen_dialog(dialog: GenDialog[T], context: DialogContext) -> T:
-    instance = dialog.dialog()
+    instance = dialog.dialog()  # type: ignore
     try:
         value_for_next_step = None
         while True:

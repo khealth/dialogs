@@ -115,7 +115,7 @@ async def _run_base_dialog(subdialog: BaseDialog[T], context: DialogContext) -> 
             subdialog, build_dialog_context(send, client_response, subdialog_state)
         )
     elif isinstance(subdialog, AsyncDialog):
-        return_value = await subdialog.dialog()
+        return_value = await subdialog.dialog()  # type: ignore
     elif isinstance(subdialog, AsyncGenDialog):
         # async generators cannot return a value (https://www.python.org/dev/peps/pep-0525/#asynchronous-generators).
         # use yield to dialog_result keeping the result value for when this policy will change.
@@ -140,7 +140,7 @@ async def _run_base_dialog(subdialog: BaseDialog[T], context: DialogContext) -> 
 
 
 async def _run_gen_dialog(dialog: GenDialog[T], context: DialogContext) -> T:
-    instance = dialog.dialog()
+    instance = dialog.dialog()  # type: ignore
     try:
         value_for_next_step = None
         while True:
@@ -151,7 +151,7 @@ async def _run_gen_dialog(dialog: GenDialog[T], context: DialogContext) -> T:
 
 
 async def _run_async_gen_dialog(dialog: AsyncGenDialog[T], context: DialogContext):
-    instance = dialog.dialog()
+    instance = dialog.dialog()  # type: ignore
     try:
         value_for_next_step = None
         while True:
