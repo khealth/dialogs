@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from itertools import count
 from typing import Optional, Union
 
 from .types import (
