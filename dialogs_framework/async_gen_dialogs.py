@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from itertools import count
 from typing import Optional, Union, cast
 
@@ -21,6 +22,14 @@ from .persistence.persistence import PersistenceProvider
 
 from .generic_types import T, ClientResponse, DialogContext, RunDialogReturnType, ServerResponse
 from .dialog_state import DialogState
+
+
+@dataclass(frozen=True)
+class dialog_result(BaseDialog[T]):
+    value: T
+    name: str = "dialog_result"
+    version: str = "1.0"
+
 
 # this is now VERY similar to run_dialog of dialogs...maybe i can refactor
 async def run_async_gen_dialog(
@@ -126,7 +135,18 @@ async def _run_base_dialog(subdialog: BaseDialog[T], context: DialogContext) -> 
             send=send,
             call_counter=count(),
         )
+        # async generators cannot return a value (https://www.python.org/dev/peps/pep-0525/#asynchronous-generators).
+        # use yield to dialog_result keeping the result value for when this policy will change.
         return_value = await _run_async_gen_dialog(subdialog, subdialog_context)
+        if (
+            subdialog_state.is_done
+        ):  # if dialog_result was used then this is the actual value. stop here
+            return subdialog_state.return_value
+    elif isinstance(subdialog, dialog_result):
+        # a solution for async generators not having return value, this step sets the
+        # parent dialog value
+        return_value = subdialog.value
+        state.return_value = subdialog.value
     else:
         raise Exception("Unsupported dialog type")
 
@@ -152,5 +172,7 @@ async def _run_async_gen_dialog(dialog: AsyncGenDialog[T], context: DialogContex
         while True:
             next_step = await instance.asend(value_for_next_step)
             value_for_next_step = await _run_base_dialog(next_step, context)
-    except StopAsyncIteration as ex:
-        return ex.value
+    except StopAsyncIteration:
+        # async iterator does not return a value...so just return. use yield dialog_result
+        # to setup a dialog result, instead
+        return
