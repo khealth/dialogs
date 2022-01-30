@@ -23,13 +23,15 @@ from .fallback_dialog import run_fallback_dialog
 from .generic_types import T, ClientResponse, DialogContext, build_dialog_context
 
 
+_GenInputDialogType = Union[get_client_response[T], Dialog[T], GenDialog[T]]
+GenInputDialogType = Union[_GenInputDialogType, send_message[ServerMessage]]
+
+
 def run_gen_dialog(
-    dialog: Union[get_client_response[T], send_message[ServerMessage], Dialog[T], GenDialog[T]],
+    dialog: GenInputDialogType,
     persistence: PersistenceProvider,
     client_response: ClientResponse,
-    fallback_dialog: Optional[
-        Union[get_client_response[T], send_message[ServerMessage], Dialog[T], GenDialog[T]]
-    ] = None,
+    fallback_dialog: Optional[GenInputDialogType] = None,
 ) -> Union[DialogStepDone[T, ServerMessage], DialogStepNotDone[ServerMessage]]:
     queue = MessageQueue[ServerMessage]()
     send: SendMessageFunction = queue.enqueue
@@ -66,14 +68,12 @@ def _run_base_dialog(subdialog: send_message[ServerMessage], context: DialogCont
 
 
 @overload
-def _run_base_dialog(
-    subdialog: Union[get_client_response[T], Dialog[T], GenDialog[T]], context: DialogContext
-) -> T:
+def _run_base_dialog(subdialog: _GenInputDialogType, context: DialogContext) -> T:
     ...
 
 
 def _run_base_dialog(
-    subdialog: Union[get_client_response[T], send_message[ServerMessage], Dialog[T], GenDialog[T]],
+    subdialog: GenInputDialogType,
     context: DialogContext,
 ) -> Optional[T]:
     state = context.state

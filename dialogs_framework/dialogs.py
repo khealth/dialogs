@@ -27,14 +27,15 @@ It contains the context required by run() to call a subdialog.
 """
 dialog_context: ContextVar[DialogContext] = ContextVar("dialog_context")
 
+_InputDialogType = Union[get_client_response[T], Dialog[T]]
+InputDialogType = Union[_InputDialogType, send_message[ServerMessage]]
+
 
 def run_dialog(
-    dialog: Union[get_client_response[T], send_message[ServerMessage], Dialog[T]],
+    dialog: InputDialogType,
     persistence: PersistenceProvider,
     client_response: ClientResponse,
-    fallback_dialog: Optional[
-        Union[get_client_response[T], send_message[ServerMessage], Dialog[T]]
-    ] = None,
+    fallback_dialog: Optional[InputDialogType] = None,
 ) -> Union[DialogStepDone[T, ServerMessage], DialogStepNotDone[ServerMessage]]:
     """
     This is the interface for calling a dialog from an external location.
@@ -81,13 +82,11 @@ def run(subdialog: send_message[ServerMessage]) -> None:
 
 
 @overload
-def run(subdialog: Union[get_client_response[T], Dialog[T]]) -> T:
+def run(subdialog: _InputDialogType) -> T:
     ...
 
 
-def run(
-    subdialog: Union[send_message[ServerMessage], Union[get_client_response[T], Dialog[T]]]
-) -> Optional[T]:
+def run(subdialog: InputDialogType) -> Optional[T]:
     """
     This function wraps the execution of all subdialogs.
 

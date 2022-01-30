@@ -39,27 +39,17 @@ class dialog_result(BaseDialog[T]):
     version: str = "1.0"
 
 
+_AsyncGenInputDialogType = Union[
+    get_client_response[T], Dialog[T], GenDialog[T], AsyncDialog, AsyncGenDialog, dialog_result
+]
+AsyncGenInputDialogType = Union[_AsyncGenInputDialogType, send_message[ServerMessage]]
+
+
 async def run_async_gen_dialog(
-    dialog: Union[
-        get_client_response[T],
-        send_message[ServerMessage],
-        Dialog[T],
-        GenDialog[T],
-        AsyncDialog[T],
-        AsyncGenDialog[T],
-    ],
+    dialog: AsyncGenInputDialogType,
     persistence: PersistenceProvider,
     client_response: ClientResponse,
-    fallback_dialog: Optional[
-        Union[
-            get_client_response[T],
-            send_message[ServerMessage],
-            Dialog[T],
-            GenDialog[T],
-            AsyncDialog[T],
-            AsyncGenDialog[T],
-        ]
-    ] = None,
+    fallback_dialog: Optional[AsyncGenInputDialogType] = None,
 ) -> Union[DialogStepDone[T, ServerMessage], DialogStepNotDone[ServerMessage]]:
     queue = MessageQueue[ServerMessage]()
     send: SendMessageFunction = queue.enqueue
@@ -119,23 +109,14 @@ async def _run_base_dialog(subdialog: send_message[ServerMessage], context: Dial
 
 @overload
 async def _run_base_dialog(
-    subdialog: Union[
-        get_client_response[T], Dialog[T], GenDialog[T], AsyncDialog[T], AsyncGenDialog[T]
-    ],
+    subdialog: _AsyncGenInputDialogType,
     context: DialogContext,
 ) -> T:
     ...
 
 
 async def _run_base_dialog(
-    subdialog: Union[
-        get_client_response[T],
-        send_message[ServerMessage],
-        Dialog[T],
-        GenDialog[T],
-        AsyncDialog[T],
-        AsyncGenDialog[T],
-    ],
+    subdialog: AsyncGenInputDialogType,
     context: DialogContext,
 ) -> Optional[T]:
     state = context.state
