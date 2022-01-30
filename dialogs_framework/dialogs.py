@@ -21,15 +21,13 @@ from .persistence.persistence import PersistenceProvider
 from .message_queue import MessageQueue
 
 
-dialog_context: ContextVar[DialogContext] = ContextVar("dialog_context")
-
-
 """
 This context is used to prevent having to pass arguments when calling dialogs_framework.
 Its purpose is to make the syntax of defining dialogs_framework nicer.
 
 It contains the context required by run() to call a subdialog.
 """
+dialog_context: ContextVar[DialogContext] = ContextVar("dialog_context")
 
 
 def run_dialog(
