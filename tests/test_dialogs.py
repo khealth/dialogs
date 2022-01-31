@@ -68,7 +68,7 @@ def fallback_with_client_response() -> None:
 
 @dialog(version="1.0")
 def topic_dialog() -> Tuple[str, str]:
-    name = run(name_getter_dialog())
+    name: str = run(name_getter_dialog())
     run(send_message(f"Hi {name}!"))
     run(send_message("What would you like to talk about"))
     topic: str = run(get_client_response())

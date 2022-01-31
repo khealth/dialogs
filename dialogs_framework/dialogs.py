@@ -1,7 +1,8 @@
-from itertools import count
-from typing import Iterator, TypeVar, List, cast, Union, Generic, Optional
-from dataclasses import dataclass
+from functools import partial
+from typing import cast, Union, Optional, overload
 from contextvars import ContextVar
+
+from dialogs_framework.fallback_dialog import run_fallback_dialog
 
 from .types import (
     Dialog,
@@ -10,30 +11,12 @@ from .types import (
     send_message,
     DialogStepDone,
     DialogStepNotDone,
-    BaseDialog,
     SendMessageFunction,
     VersionMismatchException,
 )
+from .generic_types import ClientResponse, ServerMessage, T, DialogContext, build_dialog_context
 from .persistence.persistence import PersistenceProvider
-from .dialog_state import DialogState
 from .message_queue import MessageQueue
-
-T = TypeVar("T")
-ClientResponse = TypeVar("ClientResponse")
-ServerMessage = TypeVar("ServerMessage")
-ServerResponse = List[ServerMessage]
-RunDialogReturnType = Union[DialogStepDone[T, ServerMessage], DialogStepNotDone[ServerMessage]]
-
-
-@dataclass(frozen=True)
-class DialogContext(Generic[ClientResponse, ServerMessage]):
-    send: SendMessageFunction[ServerMessage]
-    client_response: ClientResponse
-    state: DialogState
-    call_counter: Iterator[int]
-
-
-dialog_context: ContextVar[DialogContext] = ContextVar("dialog_context")
 
 
 """
@@ -42,13 +25,17 @@ Its purpose is to make the syntax of defining dialogs_framework nicer.
 
 It contains the context required by run() to call a subdialog.
 """
+dialog_context: ContextVar[DialogContext] = ContextVar("dialog_context")
+
+_InputDialogType = Union[get_client_response[T], Dialog[T]]
+InputDialogType = Union[_InputDialogType, send_message[ServerMessage]]
 
 
 def run_dialog(
-    dialog: BaseDialog[T],
+    dialog: InputDialogType,
     persistence: PersistenceProvider,
     client_response: ClientResponse,
-    fallback_dialog: Optional[BaseDialog[T]] = None,
+    fallback_dialog: Optional[InputDialogType] = None,
 ) -> Union[DialogStepDone[T, ServerMessage], DialogStepNotDone[ServerMessage]]:
     """
     This is the interface for calling a dialog from an external location.
@@ -65,9 +52,7 @@ def run_dialog(
     if state.handling_fallback and fallback_dialog is not None:
         return _run_fallback_dialog(client_response, dialog, persistence, fallback_dialog, state)
 
-    dialog_context.set(
-        DialogContext(send=send, state=state, call_counter=count(), client_response=client_response)
-    )
+    dialog_context.set(build_dialog_context(send, client_response, state))
 
     is_done = False
     try:
@@ -83,27 +68,25 @@ def run_dialog(
     messages = queue.dequeue_all()
     persistence.save_state(state)
     if is_done:
-        return DialogStepDone(return_value=return_value, messages=messages)
+        return DialogStepDone(return_value=cast(T, return_value), messages=messages)
     else:
         return DialogStepNotDone(messages=messages)
 
 
-def _run_fallback_dialog(client_response, dialog, persistence, fallback_dialog, state):
-    messages: ServerResponse = []
-    if fallback_dialog is not None:
-        next_step: RunDialogReturnType = run_dialog(fallback_dialog, persistence, client_response)
-        if not next_step.is_done:
-            return next_step
-        messages = next_step.messages
-        # Fallback dialog completed
-        state.reset(dialog, fallback_mode=False)
-
-    next_step = run_dialog(dialog, persistence, client_response, fallback_dialog)
-    next_step.messages = messages + next_step.messages
-    return next_step
+_run_fallback_dialog = partial(run_fallback_dialog, run_dialog)
 
 
-def run(subdialog: BaseDialog[T]) -> T:
+@overload
+def run(subdialog: send_message[ServerMessage]) -> None:
+    ...
+
+
+@overload
+def run(subdialog: _InputDialogType) -> T:
+    ...
+
+
+def run(subdialog: InputDialogType) -> Optional[T]:
     """
     This function wraps the execution of all subdialogs.
 
@@ -138,7 +121,7 @@ def run(subdialog: BaseDialog[T]) -> T:
     if subdialog_state.is_done:
         return subdialog_state.return_value
 
-    return_value: T
+    return_value: Optional[T]
     if isinstance(subdialog, get_client_response):
         if not subdialog_state.sent_to_client:
             subdialog_state.sent_to_client = True
@@ -151,14 +134,7 @@ def run(subdialog: BaseDialog[T]) -> T:
     elif isinstance(subdialog, Dialog):
         # This token is used to return to the parent context after
         # the subdialog has finished its execution.
-        token = dialog_context.set(
-            DialogContext(
-                state=subdialog_state,
-                client_response=client_response,
-                send=send,
-                call_counter=count(),
-            )
-        )
+        token = dialog_context.set(build_dialog_context(send, client_response, subdialog_state))
         return_value = subdialog.dialog()  # type: ignore
         dialog_context.reset(token)
     else:
