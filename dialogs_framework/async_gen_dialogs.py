@@ -51,6 +51,16 @@ async def run_async_gen_dialog(
     client_response: ClientResponse,
     fallback_dialog: Optional[AsyncGenInputDialogType] = None,
 ) -> Union[DialogStepDone[T, ServerMessage], DialogStepNotDone[ServerMessage]]:
+    """
+    This is the interface for calling a generator based dialog from an external location.
+    It returns an awaitable and allows running dialogs and subdialogs containg async io statements.
+
+    The returned DialogStep object indicates:
+    1. Whether the dialog is done
+    2. If it's done, what the return value is
+    3. If it's not done, what the next server messages are
+    """
+
     queue = MessageQueue[ServerMessage]()
     send: SendMessageFunction = queue.enqueue
 
