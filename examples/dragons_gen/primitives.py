@@ -6,7 +6,7 @@ from dialogs_framework import GenDialog, Dialog, send_message, get_client_respon
 @dialog(version="1.0")
 def prompt(text):
     yield send_message(text)
-    response: str = yield get_client_response()
+    response = yield get_client_response()
     return cast(str, response)
 
 
@@ -14,7 +14,6 @@ def prompt(text):
 def chain(dialogs: List[Union[GenDialog, Dialog, send_message, get_client_response]]):
     for dialog in dialogs:
         yield dialog
-
 
 
 @dialog(version="1.0")
